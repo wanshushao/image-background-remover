@@ -7,60 +7,46 @@ export async function POST(request: Request) {
       return Response.json({ error: 'No image provided' }, { status: 400 });
     }
 
-    // Convert base64 to blob
-    const base64Data = image.replace(/^data:image\/\w+;base64,/, '');
-    const binaryData = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
-    const blob = new Blob([binaryData], { type: 'image/png' });
+    // Call BRIA RMBG 1.4 on HuggingFace
+    const initRes = await fetch('https://bria-ai-rmbg-1-4.hf.space/call/image', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ data: [{ path: image }] }),
+      signal: AbortSignal.timeout(30000),
+    });
 
-    const formData = new FormData();
-    formData.append('image', blob, 'image.png');
+    if (!initRes.ok) throw new Error(`HF init failed: ${initRes.status}`);
 
-    // Call HuggingFace REMBG Space API
-    const hfResponse = await fetch(
-      'https://not-lain-background-removal.hf.space/call/image',
-      {
-        method: 'POST',
-        body: JSON.stringify({ data: [{ path: image }] }),
-        headers: { 'Content-Type': 'application/json' },
-        signal: AbortSignal.timeout(30000),
-      }
-    );
+    const { event_id } = await initRes.json();
+    if (!event_id) throw new Error('No event_id returned');
 
-    if (!hfResponse.ok) {
-      throw new Error('HuggingFace API error');
-    }
-
-    const hfData = await hfResponse.json();
-    const eventId = hfData.event_id;
-
-    // Poll for result
-    const resultResponse = await fetch(
-      `https://not-lain-background-removal.hf.space/call/image/${eventId}`,
+    // Poll for result via SSE
+    const resultRes = await fetch(
+      `https://bria-ai-rmbg-1-4.hf.space/call/image/${event_id}`,
       { signal: AbortSignal.timeout(30000) }
     );
 
-    const resultText = await resultResponse.text();
-    const lines = resultText.split('\n').filter(Boolean);
-    let resultData = null;
-    for (const line of lines) {
-      if (line.startsWith('data:')) {
-        resultData = JSON.parse(line.slice(5));
-        break;
-      }
-    }
+    if (!resultRes.ok) throw new Error(`HF poll failed: ${resultRes.status}`);
 
-    if (!resultData || !resultData[0]?.url) {
-      throw new Error('No result from API');
-    }
+    const text = await resultRes.text();
+    const dataLine = text.split('\n').find(l => l.startsWith('data:'));
+    if (!dataLine) throw new Error('No data in response');
 
-    // Fetch the result image and convert to base64
-    const imgResponse = await fetch(resultData[0].url);
-    const imgBuffer = await imgResponse.arrayBuffer();
-    const base64Result = btoa(String.fromCharCode(...new Uint8Array(imgBuffer)));
+    const parsed = JSON.parse(dataLine.slice(5));
+    const url = parsed?.[0]?.url;
+    if (!url) throw new Error('No result URL');
 
-    return Response.json({ result: `data:image/png;base64,${base64Result}` });
-  } catch (error) {
-    console.error(error);
-    return Response.json({ error: 'Processing failed. Please try again.' }, { status: 500 });
+    // Fetch result image and convert to base64
+    const imgRes = await fetch(url);
+    const buffer = await imgRes.arrayBuffer();
+    const base64 = btoa(String.fromCharCode(...new Uint8Array(buffer)));
+
+    return Response.json({ result: `data:image/png;base64,${base64}` });
+  } catch (err) {
+    console.error('[remove-bg]', err);
+    return Response.json(
+      { error: 'Processing failed. Please try again.' },
+      { status: 500 }
+    );
   }
 }
