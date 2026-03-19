@@ -1,5 +1,7 @@
 export const runtime = 'edge';
 
+const REMOVEBG_API_KEY = process.env.REMOVEBG_API_KEY!;
+
 export async function POST(request: Request) {
   try {
     const { image } = await request.json();
@@ -7,45 +9,37 @@ export async function POST(request: Request) {
       return Response.json({ error: 'No image provided' }, { status: 400 });
     }
 
-    // Call BRIA RMBG 1.4 on HuggingFace
-    const initRes = await fetch('https://bria-ai-rmbg-1-4.hf.space/call/image', {
+    // Strip data URL prefix to get raw base64
+    const base64Data = image.replace(/^data:image\/\w+;base64,/, '');
+
+    const res = await fetch('https://api.remove.bg/v1.0/removebg', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ data: [{ path: image }] }),
+      headers: {
+        'X-Api-Key': REMOVEBG_API_KEY,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        image_base64: base64Data,
+        size: 'auto',
+        format: 'png',
+      }),
       signal: AbortSignal.timeout(30000),
     });
 
-    if (!initRes.ok) throw new Error(`HF init failed: ${initRes.status}`);
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      const msg = (err as any)?.errors?.[0]?.title || `remove.bg error: ${res.status}`;
+      throw new Error(msg);
+    }
 
-    const { event_id } = await initRes.json();
-    if (!event_id) throw new Error('No event_id returned');
+    const buffer = await res.arrayBuffer();
+    const base64Result = btoa(String.fromCharCode(...new Uint8Array(buffer)));
 
-    // Poll for result via SSE
-    const resultRes = await fetch(
-      `https://bria-ai-rmbg-1-4.hf.space/call/image/${event_id}`,
-      { signal: AbortSignal.timeout(30000) }
-    );
-
-    if (!resultRes.ok) throw new Error(`HF poll failed: ${resultRes.status}`);
-
-    const text = await resultRes.text();
-    const dataLine = text.split('\n').find(l => l.startsWith('data:'));
-    if (!dataLine) throw new Error('No data in response');
-
-    const parsed = JSON.parse(dataLine.slice(5));
-    const url = parsed?.[0]?.url;
-    if (!url) throw new Error('No result URL');
-
-    // Fetch result image and convert to base64
-    const imgRes = await fetch(url);
-    const buffer = await imgRes.arrayBuffer();
-    const base64 = btoa(String.fromCharCode(...new Uint8Array(buffer)));
-
-    return Response.json({ result: `data:image/png;base64,${base64}` });
-  } catch (err) {
+    return Response.json({ result: `data:image/png;base64,${base64Result}` });
+  } catch (err: any) {
     console.error('[remove-bg]', err);
     return Response.json(
-      { error: 'Processing failed. Please try again.' },
+      { error: err.message || 'Processing failed. Please try again.' },
       { status: 500 }
     );
   }
