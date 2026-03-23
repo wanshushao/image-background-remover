@@ -1,30 +1,9 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
 export const metadata: Metadata = {
-  title: "Free Image Background Remover Online - Remove BG Instantly",
-  description: "Remove image background for free in seconds. No signup required. Upload JPG, PNG or WEBP and download transparent PNG instantly.",
-  openGraph: {
-    title: "Free Image Background Remover Online",
-    description: "Remove image background for free in seconds. No signup required.",
-    type: "website",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Free Image Background Remover Online",
-    description: "Remove image background for free in seconds. No signup required.",
-  },
+  title: "图像背景去除工具",
+  description: "一键去除图片背景，快速简单",
 };
 
 export default function RootLayout({
@@ -33,11 +12,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html
-      lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
-    >
-      <body className="min-h-full flex flex-col">{children}</body>
+    <html lang="zh-CN">
+      <body>{children}</body>
     </html>
   );
 }
