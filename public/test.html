@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>图像背景去除测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        .upload-btn {
+            display: block;
+            width: 100%;
+            padding: 15px;
+            background: #2563eb;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-bottom: 20px;
+        }
+        .upload-btn:hover {
+            background: #1d4ed8;
+        }
+        #result {
+            margin-top: 20px;
+        }
+        #result img {
+            width: 100%;
+            border-radius: 8px;
+            border: 2px solid #e5e7eb;
+        }
+        .download-btn {
+            display: block;
+            width: 100%;
+            padding: 15px;
+            background: #16a34a;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-top: 15px;
+            text-decoration: none;
+            text-align: center;
+        }
+        .download-btn:hover {
+            background: #15803d;
+        }
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+        .error {
+            padding: 15px;
+            background: #fee2e2;
+            border: 1px solid #fca5a5;
+            border-radius: 8px;
+            color: #dc2626;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>图像背景一键去除</h1>
+        
+        <input type="file" id="fileInput" accept="image/*" style="display: none;">
+        <button class="upload-btn" onclick="document.getElementById('fileInput').click()">
+            选择图片上传
+        </button>
+        
+        <div id="result"></div>
+    </div>
+
+    <script>
+        document.getElementById('fileInput').addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = '<div class="loading">正在处理图片...</div>';
+
+            try {
+                // 读取文件为Base64
+                const reader = new FileReader();
+                reader.onload = async () => {
+                    const base64 = reader.result.split(',')[1];
+
+                    // 调用API
+                    const response = await fetch('/api/remove-background', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ imageBase64: base64 })
+                    });
+
+                    if (!response.ok) {
+                        const error = await response.json();
+                        resultDiv.innerHTML = `<div class="error">${error.error || '处理失败'}</div>`;
+                        return;
+                    }
+
+                    // 获取结果图片
+                    const blob = await response.blob();
+                    const url = URL.createObjectURL(blob);
+
+                    // 显示结果
+                    resultDiv.innerHTML = `
+                        <p style="text-align: center; font-weight: bold; margin-bottom: 15px;">
+                            去背景结果预览：
+                        </p>
+                        <img src="${url}" alt="去背景效果">
+                        <a href="${url}" download="no-background.png" class="download-btn">
+                            下载图片
+                        </a>
+                    `;
+                };
+
+                reader.onerror = () => {
+                    resultDiv.innerHTML = '<div class="error">文件读取失败</div>';
+                };
+
+                reader.readAsDataURL(file);
+            } catch (err) {
+                resultDiv.innerHTML = `<div class="error">${err.message}</div>`;
+            }
+        });
+    </script>
+</body>
+</html>
