@@ -1,6 +1,62 @@
 'use client'
 
+import { useEffect } from 'react'
+
 export default function Home() {
+  useEffect(() => {
+    const fileInput = document.getElementById('fileInput') as HTMLInputElement
+    if (!fileInput) return
+
+    const handleChange = (e: Event) => {
+      const target = e.target as HTMLInputElement
+      const file = target.files?.[0]
+      if (!file) return
+
+      if (file.size > 5 * 1024 * 1024) {
+        const resultDiv = document.getElementById('result')
+        if (resultDiv) resultDiv.innerHTML = '<div class="error">❌ 图片大小不能超过 5MB</div>'
+        return
+      }
+
+      const resultDiv = document.getElementById('result')
+      if (!resultDiv) return
+
+      resultDiv.innerHTML = '<div class="loading"><div class="spinner"></div><div class="loading-text">正在处理图片...</div></div>'
+
+      const reader = new FileReader()
+      reader.onload = () => {
+        const base64 = (reader.result as string).split(',')[1]
+        fetch('https://green-glade-44b7.m15629127687.workers.dev', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ imageBase64: base64 })
+        })
+          .then(response => {
+            if (!response.ok) {
+              return response.json().then((error: any) => {
+                throw new Error(error.error || '处理失败')
+              })
+            }
+            return response.blob()
+          })
+          .then(blob => {
+            const url = URL.createObjectURL(blob)
+            resultDiv.innerHTML = `<div class="result-title">✅ 处理完成</div><img src="${url}"><a href="${url}" download="no-background.png" class="download-btn">⬇️ 下载图片</a>`
+          })
+          .catch((err: Error) => {
+            resultDiv.innerHTML = `<div class="error">❌ ${err.message}</div>`
+          })
+      }
+      reader.onerror = () => {
+        resultDiv.innerHTML = '<div class="error">❌ 文件读取失败</div>'
+      }
+      reader.readAsDataURL(file)
+    }
+
+    fileInput.addEventListener('change', handleChange)
+    return () => fileInput.removeEventListener('change', handleChange)
+  }, [])
+
   return (
     <>
       <style>{`
@@ -59,40 +115,11 @@ export default function Home() {
         <div className="upload-area" onClick={() => { const el = document.getElementById('fileInput'); if(el) el.click(); }}>
           <div className="upload-icon">📸</div>
           <div className="upload-text">点击上传图片</div>
-          <div className="upload-hint">支持 JPG、PNG 格式</div>
+          <div className="upload-hint">支持 JPG、PNG 格式，最大 5MB</div>
         </div>
         <div id="result"></div>
         <div className="footer">Powered by Remove.bg API</div>
       </div>
-      <script dangerouslySetInnerHTML={{__html: `
-        document.getElementById('fileInput').addEventListener('change', function(e) {
-            var file = e.target.files[0];
-            if (!file) return;
-            var resultDiv = document.getElementById('result');
-            resultDiv.innerHTML = '<div class="loading"><div class="spinner"></div><div class="loading-text">正在处理图片...</div></div>';
-            var reader = new FileReader();
-            reader.onload = function() {
-                var base64 = reader.result.split(',')[1];
-                fetch('https://green-glade-44b7.m15629127687.workers.dev', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ imageBase64: base64 })
-                }).then(function(response) {
-                    if (!response.ok) {
-                        return response.json().then(function(error) { throw new Error(error.error || '处理失败'); });
-                    }
-                    return response.blob();
-                }).then(function(blob) {
-                    var url = URL.createObjectURL(blob);
-                    resultDiv.innerHTML = '<div class="result-title">✅ 处理完成</div><img src="' + url + '"><a href="' + url + '" download="no-background.png" class="download-btn">⬇️ 下载图片</a>';
-                }).catch(function(err) {
-                    resultDiv.innerHTML = '<div class="error">❌ ' + err.message + '</div>';
-                });
-            };
-            reader.onerror = function() { resultDiv.innerHTML = '<div class="error">❌ 文件读取失败</div>'; };
-            reader.readAsDataURL(file);
-        });
-      `}} />
     </>
   )
 }
