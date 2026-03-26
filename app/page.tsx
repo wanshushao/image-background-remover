@@ -73,7 +73,7 @@ export default function Home() {
             var reader = new FileReader();
             reader.onload = function() {
                 var base64 = reader.result.split(',')[1];
-                fetch('/api/remove-background', {
+                fetch('https://green-glade-44b7.m15629127687.workers.dev', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ imageBase64: base64 })
