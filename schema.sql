@@ -1,0 +1,14 @@
+-- D1 数据库初始化脚本
+
+CREATE TABLE IF NOT EXISTS users (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  email TEXT UNIQUE NOT NULL,
+  name TEXT,
+  avatar TEXT,
+  credits INTEGER DEFAULT 3,
+  subscription TEXT DEFAULT 'free',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_email ON users(email);

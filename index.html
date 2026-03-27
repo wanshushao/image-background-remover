@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>图像背景一键去除</title>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -11,10 +12,48 @@
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
             display: flex;
+            flex-direction: column;
             align-items: center;
             justify-content: center;
             padding: 20px;
         }
+
+        /* 顶部导航 */
+        .navbar {
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            background: rgba(255,255,255,0.15);
+            backdrop-filter: blur(10px);
+            padding: 12px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            z-index: 100;
+        }
+        .navbar-brand { color: white; font-size: 18px; font-weight: 700; }
+        .user-info { display: flex; align-items: center; gap: 10px; }
+        .user-info img { width: 36px; height: 36px; border-radius: 50%; border: 2px solid white; }
+        .user-info .user-name { color: white; font-size: 14px; font-weight: 500; }
+        .credits-badge {
+            background: rgba(255,255,255,0.25);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+        }
+        .logout-btn {
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.4);
+            padding: 6px 14px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 13px;
+        }
+        .logout-btn:hover { background: rgba(255,255,255,0.3); }
+
+        /* 主容器 */
         .container {
             background: white;
             padding: 40px;
@@ -22,9 +61,21 @@
             box-shadow: 0 20px 60px rgba(0,0,0,0.3);
             max-width: 600px;
             width: 100%;
+            margin-top: 60px;
         }
         h1 { text-align: center; color: #1f2937; font-size: 32px; margin-bottom: 10px; font-weight: 700; }
         .subtitle { text-align: center; color: #6b7280; font-size: 14px; margin-bottom: 30px; }
+
+        /* 登录区域 */
+        .login-section {
+            text-align: center;
+            padding: 20px 0;
+        }
+        .login-title { color: #374151; font-size: 16px; margin-bottom: 20px; }
+        #g_id_onload { display: none; }
+        .g_id_signin { display: inline-block; }
+
+        /* 上传区域 */
         .upload-area {
             border: 3px dashed #d1d5db; border-radius: 12px; padding: 40px 20px;
             text-align: center; cursor: pointer; transition: all 0.3s ease; background: #f9fafb;
@@ -36,6 +87,7 @@
         #result { margin-top: 30px; }
         #result img { width: 100%; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); margin-bottom: 20px; }
         .result-title { text-align: center; color: #374151; font-size: 18px; font-weight: 600; margin-bottom: 15px; }
+        .credits-info { text-align: center; color: #6b7280; font-size: 13px; margin-top: 10px; }
         .download-btn {
             display: block; width: 100%; padding: 16px;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -51,57 +103,202 @@
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         .loading-text { color: #6b7280; font-size: 16px; }
         .error { padding: 20px; background: #fee2e2; border: 2px solid #fca5a5; border-radius: 12px; color: #dc2626; text-align: center; }
+
+        /* 额度不足提示 */
+        .no-credits {
+            padding: 24px; background: #fef3c7; border: 2px solid #fbbf24;
+            border-radius: 12px; text-align: center;
+        }
+        .no-credits p { color: #92400e; font-size: 15px; margin-bottom: 16px; }
+        .buy-btn {
+            display: inline-block; padding: 12px 28px;
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            color: white; border-radius: 10px; font-size: 15px; font-weight: 600;
+            text-decoration: none; cursor: pointer; border: none;
+        }
+
         .footer { text-align: center; margin-top: 30px; color: #9ca3af; font-size: 13px; }
     </style>
 </head>
 <body>
+    <!-- 顶部导航 -->
+    <nav class="navbar">
+        <div class="navbar-brand">✨ 背景去除</div>
+        <div class="user-info" id="navUser" style="display:none">
+            <img id="navAvatar" src="" alt="">
+            <span class="user-name" id="navName"></span>
+            <span class="credits-badge" id="navCredits"></span>
+            <button class="logout-btn" onclick="logout()">退出</button>
+        </div>
+    </nav>
+
     <div class="container">
         <h1>✨ 图像背景去除</h1>
         <p class="subtitle">一键去除图片背景，快速简单</p>
-        <input type="file" id="fileInput" accept="image/*" style="display: none;">
-        <div class="upload-area" onclick="document.getElementById('fileInput').click()">
-            <div class="upload-icon">📸</div>
-            <div class="upload-text">点击上传图片</div>
-            <div class="upload-hint">支持 JPG、PNG 格式，最大 10MB</div>
+
+        <!-- 登录区域 -->
+        <div class="login-section" id="loginSection">
+            <p class="login-title">请先登录以使用背景去除功能</p>
+            <!-- Google 登录按钮 -->
+            <div id="g_id_onload"
+                data-client_id="1042944429385-7ogkal95ahbinqh1p13tri95eke8mr5j.apps.googleusercontent.com"
+                data-callback="handleGoogleLogin"
+                data-auto_prompt="false">
+            </div>
+            <div class="g_id_signin"
+                data-type="standard"
+                data-size="large"
+                data-theme="outline"
+                data-text="signin_with"
+                data-shape="rectangular"
+                data-logo_alignment="left">
+            </div>
         </div>
-        <div id="result"></div>
+
+        <!-- 上传区域（登录后显示） -->
+        <div id="uploadSection" style="display:none">
+            <input type="file" id="fileInput" accept="image/*" style="display: none;">
+            <div class="upload-area" onclick="document.getElementById('fileInput').click()">
+                <div class="upload-icon">📸</div>
+                <div class="upload-text">点击上传图片</div>
+                <div class="upload-hint">支持 JPG、PNG 格式，最大 10MB</div>
+            </div>
+            <div id="result"></div>
+        </div>
+
         <div class="footer">Powered by Remove.bg API</div>
     </div>
-    <script>
-        // Worker 代理地址，部署 Worker 后替换这里
-        var WORKER_URL = 'https://green-glade-44b7.m15629127687.workers.dev';
 
+    <script>
+        // 配置
+        var API_BASE = 'https://api-worker.m15629127687.workers.dev'; // 部署后替换
+        var googleToken = null;
+        var currentUser = null;
+
+        // Google 登录回调
+        function handleGoogleLogin(response) {
+            googleToken = response.credential;
+            // 发送到后端注册/登录
+            fetch(API_BASE + '/api/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ token: googleToken })
+            })
+            .then(function(res) { return res.json(); })
+            .then(function(user) {
+                if (user.error) {
+                    alert('登录失败：' + user.error);
+                    return;
+                }
+                currentUser = user;
+                showUserUI(user);
+            })
+            .catch(function(err) {
+                alert('登录失败，请重试');
+            });
+        }
+
+        // 显示已登录 UI
+        function showUserUI(user) {
+            document.getElementById('loginSection').style.display = 'none';
+            document.getElementById('uploadSection').style.display = 'block';
+
+            // 更新导航栏
+            document.getElementById('navUser').style.display = 'flex';
+            document.getElementById('navAvatar').src = user.avatar || '';
+            document.getElementById('navName').textContent = user.name || user.email;
+            updateCreditsDisplay(user.credits);
+        }
+
+        function updateCreditsDisplay(credits) {
+            document.getElementById('navCredits').textContent = '剩余 ' + credits + ' 次';
+            currentUser.credits = credits;
+        }
+
+        // 退出登录
+        function logout() {
+            googleToken = null;
+            currentUser = null;
+            document.getElementById('loginSection').style.display = 'block';
+            document.getElementById('uploadSection').style.display = 'none';
+            document.getElementById('navUser').style.display = 'none';
+            document.getElementById('result').innerHTML = '';
+        }
+
+        // 文件上传处理
         document.getElementById('fileInput').addEventListener('change', function(e) {
             var file = e.target.files[0];
             if (!file) return;
+
             if (file.size > 10 * 1024 * 1024) {
                 document.getElementById('result').innerHTML = '<div class="error">❌ 图片大小不能超过 10MB</div>';
                 return;
             }
+
+            if (!googleToken) {
+                document.getElementById('result').innerHTML = '<div class="error">❌ 请先登录</div>';
+                return;
+            }
+
+            if (currentUser && currentUser.credits <= 0) {
+                document.getElementById('result').innerHTML =
+                    '<div class="no-credits"><p>⚠️ 您的使用次数已用完</p><button class="buy-btn" onclick="buyCredits()">💳 购买更多次数</button></div>';
+                return;
+            }
+
             var resultDiv = document.getElementById('result');
             resultDiv.innerHTML = '<div class="loading"><div class="spinner"></div><div class="loading-text">正在处理图片...</div></div>';
+
             var reader = new FileReader();
             reader.onload = function() {
                 var base64 = reader.result.split(',')[1];
-                fetch(WORKER_URL, {
+                fetch(API_BASE + '/api/remove-bg', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + googleToken
+                    },
                     body: JSON.stringify({ imageBase64: base64 })
-                }).then(function(response) {
-                    if (!response.ok) {
-                        return response.json().then(function(err) { throw new Error(err.error || '处理失败'); });
+                })
+                .then(function(res) { return res.json(); })
+                .then(function(data) {
+                    if (data.error) {
+                        if (data.code === 'NO_CREDITS') {
+                            resultDiv.innerHTML =
+                                '<div class="no-credits"><p>⚠️ 您的使用次数已用完</p><button class="buy-btn" onclick="buyCredits()">💳 购买更多次数</button></div>';
+                        } else {
+                            resultDiv.innerHTML = '<div class="error">❌ ' + data.error + '</div>';
+                        }
+                        return;
                     }
-                    return response.blob();
-                }).then(function(blob) {
+                    // 显示结果
+                    var imgSrc = 'data:image/png;base64,' + data.result;
+                    var blob = base64ToBlob(data.result, 'image/png');
                     var url = URL.createObjectURL(blob);
-                    resultDiv.innerHTML = '<div class="result-title">✅ 处理完成</div><img src="' + url + '"><a href="' + url + '" download="no-background.png" class="download-btn">⬇️ 下载图片</a>';
-                }).catch(function(err) {
-                    resultDiv.innerHTML = '<div class="error">❌ ' + err.message + '</div>';
+                    resultDiv.innerHTML =
+                        '<div class="result-title">✅ 处理完成</div>' +
+                        '<img src="' + imgSrc + '">' +
+                        '<a href="' + url + '" download="no-background.png" class="download-btn">⬇️ 下载图片</a>' +
+                        '<p class="credits-info">剩余次数：' + data.credits_remaining + ' 次</p>';
+                    updateCreditsDisplay(data.credits_remaining);
+                })
+                .catch(function(err) {
+                    resultDiv.innerHTML = '<div class="error">❌ 处理失败，请重试</div>';
                 });
             };
             reader.readAsDataURL(file);
         });
+
+        function base64ToBlob(base64, type) {
+            var binary = atob(base64);
+            var array = [];
+            for (var i = 0; i < binary.length; i++) array.push(binary.charCodeAt(i));
+            return new Blob([new Uint8Array(array)], { type: type });
+        }
+
+        function buyCredits() {
+            alert('支付功能即将上线，敬请期待！');
+        }
     </script>
 </body>
 </html>
-<!-- updated Fri Mar 27 12:14:47 AM CST 2026 -->
