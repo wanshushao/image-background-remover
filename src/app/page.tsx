@@ -44,12 +44,11 @@ export default function Home() {
     setError('');
 
     try {
-      // 将图片转为 base64
       const base64 = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () => {
           const result = reader.result as string;
-          resolve(result.split(',')[1]); // 去掉 data:image/...;base64, 前缀
+          resolve(result.split(',')[1]);
         };
         reader.onerror = reject;
         reader.readAsDataURL(file);
@@ -82,7 +81,7 @@ export default function Home() {
         <p className="text-gray-500 text-lg">上传图片，AI 自动去除背景，秒级完成</p>
       </div>
 
-      {/* Upload Area */}
+      {/* Upload Area (no image yet) */}
       {!preview && (
         <div
           className="w-full max-w-2xl bg-white rounded-2xl p-12 text-center border-2 border-dashed border-gray-300 cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition"
@@ -98,7 +97,7 @@ export default function Home() {
       )}
 
       {error && (
-        <div className="w-full max-w-5xl mt-4 bg-red-500/20 border border-red-400 text-white rounded-lg p-4 text-center">
+        <div className="w-full max-w-5xl mt-4 bg-red-50 border border-red-300 text-red-600 rounded-lg p-4 text-center">
           {error}
         </div>
       )}
@@ -106,21 +105,32 @@ export default function Home() {
       {/* Side by Side Comparison */}
       {preview && (
         <div className="w-full max-w-5xl">
+          {/* 两个图片框 */}
           <div className="grid grid-cols-2 gap-6">
-            {/* Original */}
-            <div className="bg-white rounded-2xl shadow-sm p-4">
+            {/* 原始图片 */}
+            <div className="bg-white rounded-2xl shadow-sm p-4 flex flex-col items-center">
               <h3 className="text-gray-600 font-semibold text-center mb-3">📷 原始图片</h3>
-              <div className="bg-gray-50 rounded-xl overflow-hidden aspect-square flex items-center justify-center">
+              <div className="bg-gray-50 rounded-xl overflow-hidden w-full aspect-square flex items-center justify-center">
                 <img src={preview} alt="原始图片" className="max-w-full max-h-full object-contain" />
+              </div>
+              {/* 上传图片按钮 居中 在图片框下面 */}
+              <div className="mt-4 w-full flex justify-center">
+                <input type="file" accept="image/*" onChange={handleFileChange} className="hidden" id="file-input2" />
+                <button
+                  onClick={() => document.getElementById('file-input2')?.click()}
+                  className="px-8 py-2.5 bg-white text-gray-600 border border-gray-200 rounded-xl hover:bg-gray-50 transition font-medium shadow-sm"
+                >
+                  🔄 重新上传
+                </button>
               </div>
             </div>
 
-            {/* Result */}
-            <div className="bg-white rounded-2xl shadow-sm p-4">
+            {/* 去除背景后 */}
+            <div className="bg-white rounded-2xl shadow-sm p-4 flex flex-col items-center">
               <h3 className="text-gray-600 font-semibold text-center mb-3">✨ 去除背景后</h3>
               <div
-                className="rounded-xl overflow-hidden aspect-square flex items-center justify-center"
-                style={{ background: 'repeating-conic-gradient(#ccc 0% 25%, #fff 0% 50%) 0 0 / 20px 20px' }}
+                className="rounded-xl overflow-hidden w-full aspect-square flex items-center justify-center"
+                style={{ background: 'repeating-conic-gradient(#e5e5e5 0% 25%, #fff 0% 50%) 0 0 / 20px 20px' }}
               >
                 {result ? (
                   <img src={result} alt="去除背景后" className="max-w-full max-h-full object-contain" />
@@ -128,51 +138,43 @@ export default function Home() {
                   <div className="text-center text-gray-400">
                     {loading ? (
                       <div>
-                        <div className="text-4xl mb-2 animate-spin">⚙️</div>
+                        <div className="text-4xl mb-2">⚙️</div>
                         <p>AI 处理中...</p>
                       </div>
                     ) : (
                       <div>
                         <div className="text-4xl mb-2">👆</div>
-                        <p>点击下方按钮开始</p>
+                        <p>点击去除背景</p>
                       </div>
                     )}
                   </div>
                 )}
               </div>
+              {/* 去除背景按钮 居中 在图片框下面 */}
+              <div className="mt-4 w-full flex justify-center">
+                <button
+                  onClick={handleRemoveBackground}
+                  disabled={loading || !!result}
+                  className="px-8 py-2.5 bg-green-500 text-white rounded-xl hover:bg-green-600 disabled:bg-gray-300 transition font-medium shadow-sm"
+                >
+                  {loading ? '⚙️ 处理中...' : result ? '✅ 已完成' : '🚀 去除背景'}
+                </button>
+              </div>
             </div>
           </div>
 
-          {/* Action Buttons */}
-          <div className="mt-6 flex gap-4">
-            <button
-              onClick={() => { setFile(null); setPreview(''); setResult(''); setError(''); }}
-              className="flex-1 py-3 bg-white text-gray-600 border border-gray-200 rounded-xl hover:bg-gray-50 transition font-medium shadow-sm"
-            >
-              🔄 重新选择
-            </button>
-            <button
-              onClick={handleRemoveBackground}
-              disabled={loading || !!result}
-              className="flex-2 flex-grow-[2] py-3 bg-green-500 text-white rounded-xl hover:bg-green-600 disabled:bg-gray-500 transition font-medium text-lg"
-            >
-              {loading ? '⚙️ AI 处理中...' : result ? '✅ 处理完成' : '🚀 去除背景'}
-            </button>
-            {result && (
+          {/* 下载按钮 居中 在两个框下面中间 */}
+          {result && (
+            <div className="mt-6 flex justify-center">
               <a
                 href={result}
                 download="result.png"
-                className="flex-1 py-3 bg-blue-500 text-white rounded-xl hover:bg-blue-600 transition font-medium text-center"
+                className="px-12 py-3 bg-blue-500 text-white rounded-xl hover:bg-blue-600 transition font-medium shadow-sm text-lg"
               >
                 💾 下载图片
               </a>
-            )}
-          </div>
-
-          {/* Re-upload */}
-          <div className="mt-4 text-center">
-            <input type="file" accept="image/*" onChange={handleFileChange} className="hidden" id="file-input2" />
-          </div>
+            </div>
+          )}
         </div>
       )}
     </div>
