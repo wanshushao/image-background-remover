@@ -43,14 +43,22 @@ export default function Home() {
     setLoading(true);
     setError('');
 
-    const formData = new FormData();
-    formData.append('image_file', file);
-    formData.append('size', 'auto');
-
     try {
+      // 将图片转为 base64
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const result = reader.result as string;
+          resolve(result.split(',')[1]); // 去掉 data:image/...;base64, 前缀
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+
       const response = await fetch('https://green-glade-44b7.m15629127687.workers.dev/', {
         method: 'POST',
-        body: formData,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imageBase64: base64 }),
       });
 
       if (response.ok) {
