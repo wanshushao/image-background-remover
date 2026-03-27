@@ -11,4 +11,20 @@ CREATE TABLE IF NOT EXISTS users (
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS sessions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  token TEXT UNIQUE NOT NULL,
+  user_email TEXT NOT NULL,
+  expires_at INTEGER NOT NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS oauth_states (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  state TEXT UNIQUE NOT NULL,
+  created_at INTEGER NOT NULL
+);
+
 CREATE INDEX idx_email ON users(email);
+CREATE INDEX idx_session_token ON sessions(token);
+CREATE INDEX idx_oauth_state ON oauth_states(state);
