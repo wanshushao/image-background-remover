@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>图像背景一键去除</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .navbar {
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            background: rgba(255,255,255,0.15);
+            backdrop-filter: blur(10px);
+            padding: 12px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            z-index: 100;
+        }
+        .navbar-brand { color: white; font-size: 18px; font-weight: 700; }
+        .user-info { display: flex; align-items: center; gap: 10px; }
+        .user-info img { width: 36px; height: 36px; border-radius: 50%; border: 2px solid white; }
+        .user-name { color: white; font-size: 14px; font-weight: 500; }
+        .credits-badge {
+            background: rgba(255,255,255,0.25);
+            color: white; padding: 4px 12px;
+            border-radius: 20px; font-size: 13px; font-weight: 600;
+        }
+        .logout-btn {
+            background: rgba(255,255,255,0.2); color: white;
+            border: 1px solid rgba(255,255,255,0.4);
+            padding: 6px 14px; border-radius: 8px; cursor: pointer; font-size: 13px;
+        }
+        .logout-btn:hover { background: rgba(255,255,255,0.3); }
+        .container {
+            background: white; padding: 40px; border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 600px; width: 100%; margin-top: 60px;
+        }
+        h1 { text-align: center; color: #1f2937; font-size: 32px; margin-bottom: 10px; font-weight: 700; }
+        .subtitle { text-align: center; color: #6b7280; font-size: 14px; margin-bottom: 30px; }
+        .login-section { text-align: center; padding: 20px 0; }
+        .login-title { color: #374151; font-size: 16px; margin-bottom: 24px; }
+        .google-login-btn {
+            display: inline-flex; align-items: center; gap: 12px;
+            background: white; color: #374151;
+            border: 2px solid #d1d5db; border-radius: 12px;
+            padding: 14px 28px; font-size: 16px; font-weight: 600;
+            cursor: pointer; text-decoration: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            transition: all 0.2s;
+        }
+        .google-login-btn:hover {
+            border-color: #667eea;
+            box-shadow: 0 4px 16px rgba(102,126,234,0.3);
+            transform: translateY(-1px);
+        }
+        .google-icon { width: 24px; height: 24px; }
+        .upload-area {
+            border: 3px dashed #d1d5db; border-radius: 12px; padding: 40px 20px;
+            text-align: center; cursor: pointer; transition: all 0.3s ease; background: #f9fafb;
+        }
+        .upload-area:hover { border-color: #667eea; background: #f3f4f6; }
+        .upload-icon { font-size: 48px; margin-bottom: 15px; }
+        .upload-text { color: #374151; font-size: 16px; font-weight: 500; margin-bottom: 8px; }
+        .upload-hint { color: #9ca3af; font-size: 14px; }
+        #result { margin-top: 30px; }
+        #result img { width: 100%; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        .result-title { text-align: center; color: #374151; font-size: 18px; font-weight: 600; margin-bottom: 15px; }
+        .credits-info { text-align: center; color: #6b7280; font-size: 13px; margin-top: 10px; }
+        .download-btn {
+            display: block; width: 100%; padding: 16px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white; border: none; border-radius: 12px; cursor: pointer;
+            font-size: 16px; font-weight: 600; text-decoration: none; text-align: center;
+            box-shadow: 0 4px 12px rgba(102,126,234,0.4);
+        }
+        .loading { text-align: center; padding: 40px 20px; }
+        .spinner {
+            border: 4px solid #f3f4f6; border-top: 4px solid #667eea; border-radius: 50%;
+            width: 50px; height: 50px; animation: spin 1s linear infinite; margin: 0 auto 20px;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .loading-text { color: #6b7280; font-size: 16px; }
+        .error { padding: 20px; background: #fee2e2; border: 2px solid #fca5a5; border-radius: 12px; color: #dc2626; text-align: center; }
+        .no-credits { padding: 24px; background: #fef3c7; border: 2px solid #fbbf24; border-radius: 12px; text-align: center; }
+        .no-credits p { color: #92400e; font-size: 15px; margin-bottom: 16px; }
+        .buy-btn {
+            display: inline-block; padding: 12px 28px;
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            color: white; border-radius: 10px; font-size: 15px; font-weight: 600;
+            cursor: pointer; border: none;
+        }
+        .footer { text-align: center; margin-top: 30px; color: #9ca3af; font-size: 13px; }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="navbar-brand">✨ 背景去除</div>
+        <div class="user-info" id="navUser" style="display:none">
+            <img id="navAvatar" src="" alt="">
+            <span class="user-name" id="navName"></span>
+            <span class="credits-badge" id="navCredits"></span>
+            <button class="logout-btn" onclick="logout()">退出</button>
+        </div>
+    </nav>
+
+    <div class="container">
+        <h1>✨ 图像背景去除</h1>
+        <p class="subtitle">一键去除图片背景，快速简单</p>
+
+        <!-- 登录区域 -->
+        <div class="login-section" id="loginSection">
+            <p class="login-title">请登录后使用背景去除功能</p>
+            <a href="https://image-bg-api.m15629127687.workers.dev/api/auth/login" class="google-login-btn">
+                <svg class="google-icon" viewBox="0 0 24 24">
+                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                </svg>
+                使用 Google 账号登录
+            </a>
+        </div>
+
+        <!-- 上传区域 -->
+        <div id="uploadSection" style="display:none">
+            <input type="file" id="fileInput" accept="image/*" style="display: none;">
+            <div class="upload-area" onclick="document.getElementById('fileInput').click()">
+                <div class="upload-icon">📸</div>
+                <div class="upload-text">点击上传图片</div>
+                <div class="upload-hint">支持 JPG、PNG 格式，最大 10MB</div>
+            </div>
+            <div id="result"></div>
+        </div>
+
+        <div class="footer">Powered by Remove.bg API</div>
+    </div>
+
+    <script>
+        var API_BASE = 'https://image-bg-api.m15629127687.workers.dev';
+        var sessionToken = localStorage.getItem('session_token');
+
+        // 页面加载时检查登录状态
+        window.onload = function() {
+            // 检查 URL 错误参数
+            var urlParams = new URLSearchParams(window.location.search);
+            var error = urlParams.get('error');
+            if (error) {
+                alert('登录失败：' + error + '，请重试');
+                window.history.replaceState({}, '', '/');
+            }
+
+            if (sessionToken) {
+                // 验证 session 是否有效
+                fetch(API_BASE + '/api/user', {
+                    headers: { 'Authorization': 'Bearer ' + sessionToken }
+                })
+                .then(function(res) { return res.json(); })
+                .then(function(user) {
+                    if (user.error) {
+                        localStorage.removeItem('session_token');
+                        showLoginUI();
+                    } else {
+                        showUserUI(user);
+                    }
+                })
+                .catch(function() { showLoginUI(); });
+            } else {
+                showLoginUI();
+            }
+        };
+
+        function showLoginUI() {
+            document.getElementById('loginSection').style.display = 'block';
+            document.getElementById('uploadSection').style.display = 'none';
+            document.getElementById('navUser').style.display = 'none';
+        }
+
+        function showUserUI(user) {
+            document.getElementById('loginSection').style.display = 'none';
+            document.getElementById('uploadSection').style.display = 'block';
+            document.getElementById('navUser').style.display = 'flex';
+            document.getElementById('navAvatar').src = user.avatar || '';
+            document.getElementById('navName').textContent = user.name || user.email;
+            document.getElementById('navCredits').textContent = '剩余 ' + user.credits + ' 次';
+        }
+
+        function updateCredits(credits) {
+            document.getElementById('navCredits').textContent = '剩余 ' + credits + ' 次';
+        }
+
+        function logout() {
+            fetch(API_BASE + '/api/logout', {
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + sessionToken }
+            }).finally(function() {
+                localStorage.removeItem('session_token');
+                sessionToken = null;
+                showLoginUI();
+                document.getElementById('result').innerHTML = '';
+            });
+        }
+
+        document.getElementById('fileInput').addEventListener('change', function(e) {
+            var file = e.target.files[0];
+            if (!file) return;
+
+            if (file.size > 10 * 1024 * 1024) {
+                document.getElementById('result').innerHTML = '<div class="error">❌ 图片大小不能超过 10MB</div>';
+                return;
+            }
+
+            var resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = '<div class="loading"><div class="spinner"></div><div class="loading-text">正在处理图片...</div></div>';
+
+            var reader = new FileReader();
+            reader.onload = function() {
+                var base64 = reader.result.split(',')[1];
+                fetch(API_BASE + '/api/remove-bg', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + sessionToken
+                    },
+                    body: JSON.stringify({ imageBase64: base64 })
+                })
+                .then(function(res) { return res.json(); })
+                .then(function(data) {
+                    if (data.error) {
+                        if (data.code === 'NO_CREDITS') {
+                            resultDiv.innerHTML = '<div class="no-credits"><p>⚠️ 您的使用次数已用完</p><button class="buy-btn" onclick="buyCredits()">💳 购买更多次数</button></div>';
+                        } else {
+                            resultDiv.innerHTML = '<div class="error">❌ ' + data.error + '</div>';
+                        }
+                        return;
+                    }
+                    var blob = base64ToBlob(data.result, 'image/png');
+                    var url = URL.createObjectURL(blob);
+                    resultDiv.innerHTML =
+                        '<div class="result-title">✅ 处理完成</div>' +
+                        '<img src="data:image/png;base64,' + data.result + '">' +
+                        '<a href="' + url + '" download="no-background.png" class="download-btn">⬇️ 下载图片</a>' +
+                        '<p class="credits-info">剩余次数：' + data.credits_remaining + ' 次</p>';
+                    updateCredits(data.credits_remaining);
+                })
+                .catch(function() {
+                    resultDiv.innerHTML = '<div class="error">❌ 处理失败，请重试</div>';
+                });
+            };
+            reader.readAsDataURL(file);
+        });
+
+        function base64ToBlob(base64, type) {
+            var binary = atob(base64);
+            var array = [];
+            for (var i = 0; i < binary.length; i++) array.push(binary.charCodeAt(i));
+            return new Blob([new Uint8Array(array)], { type: type });
+        }
+
+        function buyCredits() {
+            alert('支付功能即将上线，敬请期待！');
+        }
+    </script>
+</body>
+</html>
