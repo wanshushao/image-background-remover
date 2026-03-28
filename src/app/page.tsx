@@ -13,14 +13,34 @@ interface User {
 
 // 定价套餐
 const PLANS = [
-  { id: 'starter', name: 'Starter', credits: 10, price: 4.99, unit: 0.50, popular: false },
-  { id: 'popular', name: 'Popular', credits: 50, price: 19.99, unit: 0.40, popular: true },
-  { id: 'pro', name: 'Pro', credits: 200, price: 59.99, unit: 0.30, popular: false },
+  {
+    id: 'starter', name: 'Starter', credits: 10, price: 4.99, unit: 0.50,
+    badge: null,
+    features: ['10 HD background removals', 'JPG / PNG / WebP support', 'Commercial use allowed', 'Never expires'],
+  },
+  {
+    id: 'popular', name: 'Popular', credits: 30, price: 12.99, unit: 0.43,
+    badge: 'Most Popular',
+    features: ['30 HD background removals', 'JPG / PNG / WebP support', 'Commercial use allowed', 'Never expires', 'Save 14% vs Starter'],
+  },
+  {
+    id: 'pro', name: 'Pro Pack', credits: 80, price: 29.99, unit: 0.37,
+    badge: 'Best Value',
+    features: ['80 HD background removals', 'JPG / PNG / WebP support', 'Commercial use allowed', 'Never expires', 'Save 26% vs Starter'],
+  },
 ];
 
 const SUBSCRIPTIONS = [
-  { id: 'basic', name: 'Basic', credits: 60, price: 9.99, desc: '60次/月' },
-  { id: 'unlimited', name: 'Unlimited', credits: 9999, price: 24.99, desc: '无限次/月（限速50张/天）' },
+  {
+    id: 'basic', name: 'Basic', credits: 60, price: 7.99,
+    badge: null,
+    features: ['60 credits / month', 'JPG / PNG / WebP support', 'Commercial use allowed', 'Cancel anytime'],
+  },
+  {
+    id: 'unlimited', name: 'Unlimited', credits: 9999, price: 19.99,
+    badge: 'Best Value',
+    features: ['Unlimited removals / month', 'Max 50 images / day', 'JPG / PNG / WebP support', 'Commercial use allowed', 'Cancel anytime'],
+  },
 ];
 
 export default function Home() {
@@ -324,76 +344,102 @@ export default function Home() {
       {showPurchaseModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowPurchaseModal(false)}>
           <div className="bg-white rounded-2xl p-6 max-w-lg w-full mx-4" onClick={e => e.stopPropagation()}>
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold text-gray-800">
-                {user?.credits === 0 ? '⚠️ 额度已用完，请购买继续使用' : '💳 购买额度'}
-              </h2>
-              <button onClick={() => setShowPurchaseModal(false)} className="text-gray-400 hover:text-gray-600 text-2xl">×</button>
+            <div className="flex justify-between items-start mb-1">
+              <div>
+                <h2 className="text-xl font-bold text-gray-800">Simple, Transparent Pricing</h2>
+                <p className="text-gray-400 text-xs mt-0.5">Start free · No subscription required · Credits never expire</p>
+              </div>
+              <button onClick={() => setShowPurchaseModal(false)} className="text-gray-400 hover:text-gray-600 text-2xl mt-1">×</button>
             </div>
 
             {/* Tab 切换 */}
-            <div className="flex bg-gray-100 rounded-lg p-1 mb-5">
+            <div className="flex bg-gray-100 rounded-lg p-1 mb-5 mt-4">
               <button
                 onClick={() => setPurchaseTab('credits')}
                 className={`flex-1 py-2 rounded-md text-sm font-medium transition ${purchaseTab === 'credits' ? 'bg-white shadow text-gray-800' : 'text-gray-500'}`}
               >
-                积分包
+                Credit Packs
               </button>
               <button
                 onClick={() => setPurchaseTab('subscription')}
-                className={`flex-1 py-2 rounded-md text-sm font-medium transition ${purchaseTab === 'subscription' ? 'bg-white shadow text-gray-800' : 'text-gray-500'}`}
+                className={`flex-1 py-2 rounded-md text-sm font-medium transition flex items-center justify-center gap-2 ${purchaseTab === 'subscription' ? 'bg-white shadow text-gray-800' : 'text-gray-500'}`}
               >
-                月订阅
+                Monthly Subscription
+                <span className="text-xs bg-green-100 text-green-600 px-1.5 py-0.5 rounded-full">Save up to 20%</span>
               </button>
             </div>
 
             {/* 积分包 */}
             {purchaseTab === 'credits' && (
-              <div className="space-y-3">
-                {PLANS.map(plan => (
-                  <div key={plan.id} className={`relative border-2 rounded-xl p-4 cursor-pointer hover:border-blue-400 transition ${plan.popular ? 'border-blue-500 bg-blue-50' : 'border-gray-200'}`}>
-                    {plan.popular && (
-                      <span className="absolute -top-3 left-4 bg-blue-500 text-white text-xs px-2 py-0.5 rounded-full">最受欢迎</span>
-                    )}
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <span className="font-semibold text-gray-800">{plan.name}</span>
-                        <span className="text-gray-500 text-sm ml-2">{plan.credits} 次 · ${plan.unit}/张</span>
+              <div>
+                <div className="grid grid-cols-3 gap-3">
+                  {PLANS.map(plan => (
+                    <div key={plan.id} className={`relative border-2 rounded-xl p-4 flex flex-col transition ${plan.badge === 'Most Popular' ? 'border-blue-500' : 'border-gray-200 hover:border-blue-300'}`}>
+                      {plan.badge && (
+                        <span className={`absolute -top-3 left-1/2 -translate-x-1/2 text-white text-xs px-3 py-0.5 rounded-full whitespace-nowrap ${plan.badge === 'Most Popular' ? 'bg-blue-500' : 'bg-gray-700'}`}>
+                          {plan.badge}
+                        </span>
+                      )}
+                      <div className="mb-3">
+                        <div className="font-bold text-gray-800">{plan.name}</div>
+                        <div className="text-2xl font-bold text-gray-900 mt-1">${plan.price}</div>
+                        <div className="text-gray-400 text-xs">{plan.credits} credits · ${plan.unit} each</div>
                       </div>
-                      <div className="text-right">
-                        <span className="text-xl font-bold text-gray-800">${plan.price}</span>
-                        <button className="ml-3 px-4 py-1.5 bg-blue-500 text-white rounded-lg hover:bg-blue-600 text-sm font-medium">
-                          购买
-                        </button>
-                      </div>
+                      <ul className="space-y-1 mb-4 flex-1">
+                        {plan.features.map((f, i) => (
+                          <li key={i} className="text-xs text-gray-600 flex items-start gap-1">
+                            <span className="text-green-500 mt-0.5">✓</span> {f}
+                          </li>
+                        ))}
+                      </ul>
+                      <button className={`w-full py-2 rounded-lg text-sm font-semibold transition ${plan.badge === 'Most Popular' ? 'bg-blue-500 text-white hover:bg-blue-600' : 'bg-gray-900 text-white hover:bg-gray-700'}`}>
+                        Buy {plan.name}
+                      </button>
                     </div>
-                  </div>
-                ))}
-                <p className="text-xs text-gray-400 text-center mt-2">积分永不过期 · 支持 PayPal（即将开放）</p>
+                  ))}
+                </div>
+                <div className="flex justify-center gap-6 mt-4 text-xs text-gray-400">
+                  <span>✓ Secure payment</span>
+                  <span>✓ No hidden fees</span>
+                  <span>✓ 7-day refund guarantee</span>
+                  <span>✓ Credits never expire</span>
+                </div>
               </div>
             )}
 
             {/* 月订阅 */}
             {purchaseTab === 'subscription' && (
-              <div className="space-y-3">
-                {SUBSCRIPTIONS.map(sub => (
-                  <div key={sub.id} className="border-2 border-gray-200 rounded-xl p-4 cursor-pointer hover:border-blue-400 transition">
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <span className="font-semibold text-gray-800">{sub.name}</span>
-                        <span className="text-gray-500 text-sm ml-2">{sub.desc}</span>
+              <div>
+                <div className="grid grid-cols-2 gap-3">
+                  {SUBSCRIPTIONS.map(sub => (
+                    <div key={sub.id} className={`relative border-2 rounded-xl p-4 flex flex-col transition ${sub.badge === 'Best Value' ? 'border-blue-500' : 'border-gray-200 hover:border-blue-300'}`}>
+                      {sub.badge && (
+                        <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gray-700 text-white text-xs px-3 py-0.5 rounded-full whitespace-nowrap">
+                          {sub.badge}
+                        </span>
+                      )}
+                      <div className="mb-3">
+                        <div className="font-bold text-gray-800">{sub.name}</div>
+                        <div className="text-2xl font-bold text-gray-900 mt-1">${sub.price}<span className="text-sm font-normal text-gray-400">/mo</span></div>
                       </div>
-                      <div className="text-right">
-                        <span className="text-xl font-bold text-gray-800">${sub.price}</span>
-                        <span className="text-gray-400 text-sm">/月</span>
-                        <button className="ml-3 px-4 py-1.5 bg-blue-500 text-white rounded-lg hover:bg-blue-600 text-sm font-medium">
-                          订阅
-                        </button>
-                      </div>
+                      <ul className="space-y-1 mb-4 flex-1">
+                        {sub.features.map((f, i) => (
+                          <li key={i} className="text-xs text-gray-600 flex items-start gap-1">
+                            <span className="text-green-500 mt-0.5">✓</span> {f}
+                          </li>
+                        ))}
+                      </ul>
+                      <button className="w-full py-2 bg-gray-900 text-white rounded-lg text-sm font-semibold hover:bg-gray-700 transition">
+                        Subscribe {sub.name}
+                      </button>
                     </div>
-                  </div>
-                ))}
-                <p className="text-xs text-gray-400 text-center mt-2">每月1日自动重置额度 · 随时取消</p>
+                  ))}
+                </div>
+                <div className="flex justify-center gap-6 mt-4 text-xs text-gray-400">
+                  <span>✓ Cancel anytime</span>
+                  <span>✓ No hidden fees</span>
+                  <span>✓ 7-day refund guarantee</span>
+                </div>
               </div>
             )}
           </div>
