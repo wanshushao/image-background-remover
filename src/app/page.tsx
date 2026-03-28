@@ -336,10 +336,21 @@ export default function Home() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowPurchaseModal(false)}>
           <div className="bg-white rounded-2xl p-6 max-w-2xl w-full mx-4" onClick={e => e.stopPropagation()}>
             {paymentSuccess ? (
-              <div className="text-center py-8">
-                <div className="text-6xl mb-4">🎉</div>
-                <h2 className="text-xl font-bold text-gray-800">Payment Successful!</h2>
-                <p className="text-gray-500 mt-2">Credits added to your account.</p>
+              <div className="text-center py-10 px-6">
+                <div className="text-6xl mb-5">🎉</div>
+                <h2 className="text-3xl font-bold text-gray-900 mb-3">Payment Successful!</h2>
+                <p className="text-blue-600 text-xl font-semibold mb-1">
+                  +{PLANS.find(p => p.id === selectedPlan)?.credits} credits added to your account.
+                </p>
+                <p className="text-gray-400 text-sm mb-8">
+                  New balance: <span className="font-semibold text-gray-700">{user?.credits} credits</span>
+                </p>
+                <button
+                  onClick={() => { setShowPurchaseModal(false); setPaymentSuccess(false); }}
+                  className="px-10 py-3 bg-blue-500 text-white rounded-xl text-lg font-semibold hover:bg-blue-600 transition"
+                >
+                  Start Removing Backgrounds →
+                </button>
               </div>
             ) : (
               <>
