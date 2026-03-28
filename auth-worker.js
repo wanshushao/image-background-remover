@@ -61,6 +61,11 @@ export default {
         return handleSubscriptionSuccess(request, env, corsHeaders);
       }
 
+      // ===== PayPal Webhook =====
+      if (url.pathname === '/api/paypal/webhook' && request.method === 'POST') {
+        return handleWebhook(request, env, corsHeaders);
+      }
+
       return Response.json({ error: 'Not found' }, { status: 404, headers: corsHeaders });
     } catch (e) {
       return Response.json({ error: e.message }, { status: 500, headers: corsHeaders });
@@ -336,6 +341,79 @@ async function handleSubscriptionSuccess(request, env, corsHeaders) {
 
   const user = await env.DB.prepare('SELECT credits, subscription_status FROM users WHERE email = ?').bind(session.user_email).first();
   return Response.json({ success: true, credits: user.credits }, { headers: corsHeaders });
+}
+
+// ===== PayPal Webhook Handler =====
+async function handleWebhook(request, env, corsHeaders) {
+  try {
+    const body = await request.text();
+    const event = JSON.parse(body);
+
+    // 验证 Webhook 签名
+    const isValid = await verifyWebhookSignature(request, body, env);
+    if (!isValid) {
+      return new Response('Webhook verification failed', { status: 400 });
+    }
+
+    const eventType = event.event_type;
+
+    // 积分包支付完成
+    if (eventType === 'PAYMENT.CAPTURE.COMPLETED') {
+      const capture = event.resource;
+      const customId = capture.custom_id;
+      if (customId) {
+        try {
+          const { email, planId, credits } = JSON.parse(customId);
+          if (email && credits) {
+            await env.DB.prepare(
+              'UPDATE users SET credits = credits + ?, updated_at = ? WHERE email = ?'
+            ).bind(credits, Math.floor(Date.now() / 1000), email).run();
+
+            await env.DB.prepare(
+              'INSERT INTO usage_logs (user_email, action) VALUES (?, ?)'
+            ).bind(email, `webhook_purchase_${planId}_${credits}credits`).run();
+          }
+        } catch (e) {
+          console.error('Failed to parse custom_id:', e);
+        }
+      }
+    }
+
+    return Response.json({ received: true }, { headers: corsHeaders });
+  } catch (e) {
+    return Response.json({ error: e.message }, { status: 500, headers: corsHeaders });
+  }
+}
+
+// ===== Verify PayPal Webhook Signature =====
+async function verifyWebhookSignature(request, body, env) {
+  try {
+    const token = await getPayPalToken(env);
+    const headers = request.headers;
+
+    const verifyRes = await fetch('https://api-m.sandbox.paypal.com/v1/notifications/verify-webhook-signature', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        transmission_id: headers.get('paypal-transmission-id'),
+        transmission_time: headers.get('paypal-transmission-time'),
+        cert_url: headers.get('paypal-cert-url'),
+        auth_algo: headers.get('paypal-auth-algo'),
+        transmission_sig: headers.get('paypal-transmission-sig'),
+        webhook_id: env.PAYPAL_WEBHOOK_ID,
+        webhook_event: JSON.parse(body),
+      }),
+    });
+
+    const result = await verifyRes.json();
+    return result.verification_status === 'SUCCESS';
+  } catch (e) {
+    console.error('Webhook verification error:', e);
+    return false;
+  }
 }
 
 // ===== Helper: Get Session =====
