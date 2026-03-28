@@ -20,7 +20,16 @@ export default function Home() {
   const [error, setError] = useState<string>('');
 
   useEffect(() => {
-    const token = localStorage.getItem('session_token');
+    // 处理 OAuth 回调带回来的 token
+    const params = new URLSearchParams(window.location.search);
+    const urlToken = params.get('token');
+    if (urlToken) {
+      localStorage.setItem('session_token', urlToken);
+      // 清理 URL 里的 token 参数
+      window.history.replaceState({}, '', '/');
+    }
+
+    const token = urlToken || localStorage.getItem('session_token');
     if (token) {
       fetch(`${API_BASE}/api/user`, {
         headers: { Authorization: `Bearer ${token}` },

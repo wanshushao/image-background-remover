@@ -71,7 +71,7 @@ async function handleCallback(request, env, url) {
     });
 
     const tokens = await tokenRes.json();
-    if (!tokens.access_token) throw new Error('Token exchange failed');
+    if (!tokens.access_token) throw new Error('Token exchange failed: ' + JSON.stringify(tokens));
 
     const userRes = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
       headers: { Authorization: `Bearer ${tokens.access_token}` },
@@ -92,7 +92,7 @@ async function handleCallback(request, env, url) {
       sessionToken, userInfo.email, expiresAt
     ).run();
 
-    return new Response(`<script>localStorage.setItem('session_token','${sessionToken}');window.location.href='https://image-background-remover-8jc.pages.dev/';</script>`, {
+    return new Response(`<script>localStorage.setItem('session_token','${sessionToken}');window.location.href='https://image-background-remover-8jc.pages.dev/?token=${sessionToken}';</script>`, {
       headers: { 'Content-Type': 'text/html' }
     });
   } catch (e) {
