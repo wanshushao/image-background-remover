@@ -11,6 +11,18 @@ interface User {
   credits: number;
 }
 
+// 定价套餐
+const PLANS = [
+  { id: 'starter', name: 'Starter', credits: 10, price: 4.99, unit: 0.50, popular: false },
+  { id: 'popular', name: 'Popular', credits: 50, price: 19.99, unit: 0.40, popular: true },
+  { id: 'pro', name: 'Pro', credits: 200, price: 59.99, unit: 0.30, popular: false },
+];
+
+const SUBSCRIPTIONS = [
+  { id: 'basic', name: 'Basic', credits: 60, price: 9.99, desc: '60次/月' },
+  { id: 'unlimited', name: 'Unlimited', credits: 9999, price: 24.99, desc: '无限次/月（限速50张/天）' },
+];
+
 export default function Home() {
   const [user, setUser] = useState<User | null>(null);
   const [file, setFile] = useState<File | null>(null);
@@ -19,13 +31,18 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>('');
 
+  // 弹窗状态
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [showPurchaseModal, setShowPurchaseModal] = useState(false);
+  const [showProfileDrawer, setShowProfileDrawer] = useState(false);
+  const [purchaseTab, setPurchaseTab] = useState<'credits' | 'subscription'>('credits');
+
   useEffect(() => {
     // 处理 OAuth 回调带回来的 token
     const params = new URLSearchParams(window.location.search);
     const urlToken = params.get('token');
     if (urlToken) {
       localStorage.setItem('session_token', urlToken);
-      // 清理 URL 里的 token 参数
       window.history.replaceState({}, '', '/');
     }
 
@@ -51,6 +68,7 @@ export default function Home() {
   const handleLogout = () => {
     localStorage.removeItem('session_token');
     setUser(null);
+    setShowProfileDrawer(false);
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -84,14 +102,16 @@ export default function Home() {
 
   const handleRemoveBackground = async () => {
     if (!file) return;
-    
+
+    // 未登录 → 弹出登录引导
     if (!user) {
-      setError('请先登录');
+      setShowLoginModal(true);
       return;
     }
 
+    // 额度为0 → 强制弹出购买弹窗
     if (user.credits <= 0) {
-      setError('额度不足，请充值');
+      setShowPurchaseModal(true);
       return;
     }
 
@@ -125,7 +145,11 @@ export default function Home() {
         setUser(prev => prev ? { ...prev, credits: prev.credits - 1 } : null);
       } else {
         const err = await response.json();
-        setError(err.error || '处理失败');
+        if (err.error === 'No credits') {
+          setShowPurchaseModal(true);
+        } else {
+          setError(err.error || '处理失败');
+        }
       }
     } catch {
       setError('网络错误');
@@ -136,26 +160,60 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
+
       {/* 顶部导航栏 */}
       <nav className="bg-white shadow-sm px-6 py-3 flex justify-between items-center">
-        <h1 className="text-xl font-bold text-gray-800">✨ 图像背景去除</h1>
+        <h1 className="text-xl font-bold text-gray-800">✨ BgRemover</h1>
         {user ? (
-          <div className="flex items-center gap-4">
-            <span className="text-sm text-gray-600">剩余 {user.credits} 次</span>
-            <img src={user.avatar} alt={user.name} className="w-8 h-8 rounded-full" />
-            <button onClick={handleLogout} className="text-sm text-gray-500 hover:text-gray-700">退出</button>
+          <div className="flex items-center gap-3">
+            {/* 剩余次数 - 点击打开购买 */}
+            <button
+              onClick={() => setShowPurchaseModal(true)}
+              className={`text-sm px-3 py-1 rounded-full font-medium transition ${
+                user.credits <= 1
+                  ? 'bg-red-100 text-red-600 hover:bg-red-200'
+                  : 'bg-green-100 text-green-700 hover:bg-green-200'
+              }`}
+            >
+              {user.credits <= 1 ? '⚠️' : '✅'} 剩余 {user.credits} 次
+            </button>
+            {/* 头像 - 点击打开个人中心 */}
+            <button onClick={() => setShowProfileDrawer(true)}>
+              <img src={user.avatar} alt={user.name} className="w-8 h-8 rounded-full hover:ring-2 hover:ring-blue-400 transition" />
+            </button>
           </div>
         ) : (
-          <button onClick={handleLogin} className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">
+          <button
+            onClick={handleLogin}
+            className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 text-sm font-medium"
+          >
             Google 登录
           </button>
         )}
       </nav>
 
+      {/* 剩余1次时顶部提示条 */}
+      {user && user.credits === 1 && (
+        <div className="bg-yellow-50 border-b border-yellow-200 px-6 py-2 flex items-center justify-between">
+          <span className="text-yellow-700 text-sm">⚠️ 仅剩 1 次额度，用完后需要购买才能继续</span>
+          <button
+            onClick={() => setShowPurchaseModal(true)}
+            className="text-sm text-yellow-700 underline hover:text-yellow-900"
+          >
+            立即补充 →
+          </button>
+        </div>
+      )}
+
       {/* 主内容 */}
       <div className="flex-1 flex flex-col items-center p-6">
         <div className="w-full max-w-5xl mb-6 text-center">
           <p className="text-gray-500 text-lg">上传图片，AI 自动去除背景，秒级完成</p>
+          {!user && (
+            <p className="text-blue-500 text-sm mt-1">
+              💡 <button onClick={handleLogin} className="underline hover:text-blue-700">登录即送 3 次免费额度</button>，无需信用卡
+            </p>
+          )}
         </div>
 
         {error && (
@@ -241,6 +299,170 @@ export default function Home() {
           </div>
         )}
       </div>
+
+      {/* ===== 登录引导弹窗 ===== */}
+      {showLoginModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowLoginModal(false)}>
+          <div className="bg-white rounded-2xl p-8 max-w-sm w-full mx-4 text-center" onClick={e => e.stopPropagation()}>
+            <div className="text-5xl mb-4">🎁</div>
+            <h2 className="text-xl font-bold text-gray-800 mb-2">登录即送 3 次免费额度</h2>
+            <p className="text-gray-500 text-sm mb-6">使用 Google 账号一键登录，无需信用卡，立即开始去除背景</p>
+            <button
+              onClick={() => { setShowLoginModal(false); handleLogin(); }}
+              className="w-full py-3 bg-blue-500 text-white rounded-xl hover:bg-blue-600 font-medium flex items-center justify-center gap-2"
+            >
+              <span>🔑</span> Google 登录 · 免费获得 3 次
+            </button>
+            <button onClick={() => setShowLoginModal(false)} className="mt-3 text-sm text-gray-400 hover:text-gray-600">
+              稍后再说
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ===== 购买弹窗 ===== */}
+      {showPurchaseModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowPurchaseModal(false)}>
+          <div className="bg-white rounded-2xl p-6 max-w-lg w-full mx-4" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold text-gray-800">
+                {user?.credits === 0 ? '⚠️ 额度已用完，请购买继续使用' : '💳 购买额度'}
+              </h2>
+              <button onClick={() => setShowPurchaseModal(false)} className="text-gray-400 hover:text-gray-600 text-2xl">×</button>
+            </div>
+
+            {/* Tab 切换 */}
+            <div className="flex bg-gray-100 rounded-lg p-1 mb-5">
+              <button
+                onClick={() => setPurchaseTab('credits')}
+                className={`flex-1 py-2 rounded-md text-sm font-medium transition ${purchaseTab === 'credits' ? 'bg-white shadow text-gray-800' : 'text-gray-500'}`}
+              >
+                积分包
+              </button>
+              <button
+                onClick={() => setPurchaseTab('subscription')}
+                className={`flex-1 py-2 rounded-md text-sm font-medium transition ${purchaseTab === 'subscription' ? 'bg-white shadow text-gray-800' : 'text-gray-500'}`}
+              >
+                月订阅
+              </button>
+            </div>
+
+            {/* 积分包 */}
+            {purchaseTab === 'credits' && (
+              <div className="space-y-3">
+                {PLANS.map(plan => (
+                  <div key={plan.id} className={`relative border-2 rounded-xl p-4 cursor-pointer hover:border-blue-400 transition ${plan.popular ? 'border-blue-500 bg-blue-50' : 'border-gray-200'}`}>
+                    {plan.popular && (
+                      <span className="absolute -top-3 left-4 bg-blue-500 text-white text-xs px-2 py-0.5 rounded-full">最受欢迎</span>
+                    )}
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <span className="font-semibold text-gray-800">{plan.name}</span>
+                        <span className="text-gray-500 text-sm ml-2">{plan.credits} 次 · ${plan.unit}/张</span>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-xl font-bold text-gray-800">${plan.price}</span>
+                        <button className="ml-3 px-4 py-1.5 bg-blue-500 text-white rounded-lg hover:bg-blue-600 text-sm font-medium">
+                          购买
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                <p className="text-xs text-gray-400 text-center mt-2">积分永不过期 · 支持 PayPal（即将开放）</p>
+              </div>
+            )}
+
+            {/* 月订阅 */}
+            {purchaseTab === 'subscription' && (
+              <div className="space-y-3">
+                {SUBSCRIPTIONS.map(sub => (
+                  <div key={sub.id} className="border-2 border-gray-200 rounded-xl p-4 cursor-pointer hover:border-blue-400 transition">
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <span className="font-semibold text-gray-800">{sub.name}</span>
+                        <span className="text-gray-500 text-sm ml-2">{sub.desc}</span>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-xl font-bold text-gray-800">${sub.price}</span>
+                        <span className="text-gray-400 text-sm">/月</span>
+                        <button className="ml-3 px-4 py-1.5 bg-blue-500 text-white rounded-lg hover:bg-blue-600 text-sm font-medium">
+                          订阅
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                <p className="text-xs text-gray-400 text-center mt-2">每月1日自动重置额度 · 随时取消</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ===== 个人中心侧边抽屉 ===== */}
+      {showProfileDrawer && user && (
+        <div className="fixed inset-0 z-50 flex justify-end">
+          <div className="flex-1 bg-black/30" onClick={() => setShowProfileDrawer(false)} />
+          <div className="bg-white w-80 h-full shadow-xl flex flex-col">
+            {/* 头部 */}
+            <div className="p-6 bg-gradient-to-br from-blue-500 to-blue-600 text-white">
+              <div className="flex justify-between items-start">
+                <div className="flex items-center gap-3">
+                  <img src={user.avatar} alt={user.name} className="w-12 h-12 rounded-full ring-2 ring-white" />
+                  <div>
+                    <div className="font-semibold">{user.name}</div>
+                    <div className="text-blue-100 text-xs">{user.email}</div>
+                  </div>
+                </div>
+                <button onClick={() => setShowProfileDrawer(false)} className="text-white/70 hover:text-white text-xl">×</button>
+              </div>
+            </div>
+
+            {/* 额度展示 */}
+            <div className="p-5 border-b">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-gray-600 text-sm">剩余额度</span>
+                <span className={`text-2xl font-bold ${user.credits <= 1 ? 'text-red-500' : 'text-green-600'}`}>
+                  {user.credits} 次
+                </span>
+              </div>
+              <button
+                onClick={() => { setShowProfileDrawer(false); setShowPurchaseModal(true); }}
+                className="w-full py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 text-sm font-medium"
+              >
+                💳 购买更多额度
+              </button>
+            </div>
+
+            {/* 账户信息 */}
+            <div className="p-5 border-b flex-1">
+              <h3 className="text-gray-500 text-xs font-semibold uppercase tracking-wider mb-3">账户信息</h3>
+              <div className="space-y-2 text-sm text-gray-600">
+                <div className="flex justify-between">
+                  <span>账户类型</span>
+                  <span className="font-medium text-gray-800">免费用户</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>登录方式</span>
+                  <span className="font-medium text-gray-800">Google</span>
+                </div>
+              </div>
+            </div>
+
+            {/* 退出 */}
+            <div className="p-5">
+              <button
+                onClick={handleLogout}
+                className="w-full py-2 border border-gray-200 text-gray-500 rounded-lg hover:bg-gray-50 text-sm"
+              >
+                退出登录
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
