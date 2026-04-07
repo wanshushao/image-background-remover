@@ -16,9 +16,6 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "BgRemover - Remove Image Background Instantly",
   description: "AI-powered background removal for product photos. Fast, accurate, affordable.",
-  verification: {
-    google: "SFctGnAvGk495s9Myg05dlKqb4lZgsFYO5Jp_dejQ2Q",
-  },
 };
 
 const PAYPAL_CLIENT_ID = "AXbvj_Ut_jWHmjb_bQ5l2Sz8gCHb0IUZ4QwT6YmFc7kzGe8KZApg5s6Y0jeCTrKuNOsnTCUGvxM7o9_o";
@@ -33,6 +30,9 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
+      <head>
+        <meta name="google-site-verification" content="SFctGnAvGk495s9Myg05dlKqb4lZgsFYO5Jp_dejQ2Q" />
+      </head>
       <body className="min-h-full flex flex-col">
         {children}
         <Script
