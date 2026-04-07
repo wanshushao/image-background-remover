@@ -94,6 +94,7 @@ MIT License — free to use and modify.
 Looking for more image tools?
 - [Remove.bg](https://www.remove.bg) — popular background remover
 - [Canva Background Remover](https://www.canva.com) — design platform with BG removal
+- <!-- Triggering build -->
 - **[Image Background Remover](https://www.image-background-remover.shop)** — our free, fast alternative ✨
 
 ---
