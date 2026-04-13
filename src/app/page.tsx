@@ -19,7 +19,7 @@ interface User {
   subscription_status?: string;
 }
 
-// 定价套餐
+// 价格方案
 const PLANS = [
   {
     id: 'starter', name: 'Starter', credits: 10, price: 4.99, unit: 0.50,
@@ -47,7 +47,7 @@ const SUBSCRIPTIONS = [
   {
     id: 'unlimited', name: 'Unlimited', credits: 9999, price: 19.99,
     badge: 'Best Value',
-    features: ['Unlimited removals / month', 'Max 50 images / day', 'JPG / PNG / WebP support', 'Commercial use allowed', 'Cancel anytime'],
+    features: ['Unlimited removes / month', 'Max 50 images / day', 'JPG / PNG / WebP support', 'Commercial use allowed', 'Cancel anytime'],
   },
 ];
 
@@ -63,6 +63,7 @@ export default function Home() {
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
   const [showProfileDrawer, setShowProfileDrawer] = useState(false);
+  const [showContactModal, setShowContactModal] = useState(false);
   const [purchaseTab, setPurchaseTab] = useState<'credits' | 'subscription'>('credits');
   const [selectedPlan, setSelectedPlan] = useState<string>('popular');
   const [paypalReady, setPaypalReady] = useState(false);
@@ -70,7 +71,7 @@ export default function Home() {
   const paypalContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // 处理 OAuth 回调带回来的 token
+    // 检查 OAuth 回调带来的 token
     const params = new URLSearchParams(window.location.search);
     const urlToken = params.get('token');
     if (urlToken) {
@@ -88,17 +89,17 @@ export default function Home() {
         .catch(() => localStorage.removeItem('session_token'));
     }
 
-    // 等待 PayPal SDK 加载
-    const checkPayPal = setInterval(() => {
+    // 检查 PayPal SDK 加载
+    const checkPaypal = setInterval(() => {
       if (window.paypal) {
         setPaypalReady(true);
-        clearInterval(checkPayPal);
+        clearInterval(checkPaypal);
       }
     }, 500);
-    return () => clearInterval(checkPayPal);
+    return () => clearInterval(checkPaypal);
   }, []);
 
-  // PayPal 按钮渲染（积分包）
+  // PayPal 按钮渲染（仅在购买弹窗且积分页时）
   useEffect(() => {
     if (!paypalReady || !showPurchaseModal || purchaseTab !== 'credits' || !paypalContainerRef.current) return;
     if (!user) return;
@@ -209,29 +210,38 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
 
-      {/* 顶部导航栏 */}
+      {/* 导航栏 */}
       <nav className="bg-white shadow-sm px-6 py-3 flex justify-between items-center">
         <h1 className="text-xl font-bold text-gray-800">✨ BgRemover</h1>
-        {user ? (
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setShowPurchaseModal(true)}
-              className={`text-sm px-3 py-1 rounded-full font-medium transition ${user.credits <= 1 ? 'bg-red-100 text-red-600 hover:bg-red-200' : 'bg-green-100 text-green-700 hover:bg-green-200'}`}
-            >
-              {user.credits <= 1 ? '⚠️' : '✅'} {user.credits} credits left
-            </button>
-            <button onClick={() => setShowProfileDrawer(true)}>
-              <img src={user.avatar} alt={user.name} className="w-8 h-8 rounded-full hover:ring-2 hover:ring-blue-400 transition" />
-            </button>
-          </div>
-        ) : (
-          <button onClick={handleLogin} className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 text-sm font-medium">
-            Sign in with Google
+        <div className="flex items-center gap-3">
+          {/* 联系客服按钮 */}
+          <button
+            onClick={() => setShowContactModal(true)}
+            className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition"
+          >
+            💬 联系客服
           </button>
-        )}
+          {user ? (
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setShowPurchaseModal(true)}
+                className={`text-sm px-3 py-1 rounded-full font-medium transition ${user.credits <= 1 ? 'bg-red-100 text-red-600 hover:bg-red-200' : 'bg-green-100 text-green-700 hover:bg-green-200'}`}
+              >
+                {user.credits <= 1 ? '⚠️' : '💰'} {user.credits} credits left
+              </button>
+              <button onClick={() => setShowProfileDrawer(true)}>
+                <img src={user.avatar} alt={user.name} className="w-8 h-8 rounded-full hover:ring-2 hover:ring-blue-400 transition" />
+              </button>
+            </div>
+          ) : (
+            <button onClick={handleLogin} className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 text-sm font-medium">
+              Sign in with Google
+            </button>
+          )}
+        </div>
       </nav>
 
-      {/* 剩余1次提示条 */}
+      {/* 积分提示条 */}
       {user && user.credits === 1 && (
         <div className="bg-yellow-50 border-b border-yellow-200 px-6 py-2 flex items-center justify-between">
           <span className="text-yellow-700 text-sm">⚠️ Only 1 credit left</span>
@@ -245,7 +255,7 @@ export default function Home() {
           <p className="text-gray-500 text-lg">Upload your image — AI removes the background in seconds</p>
           {!user && (
             <p className="text-blue-500 text-sm mt-1">
-              💡 <button onClick={handleLogin} className="underline hover:text-blue-700">Sign in to get 3 free credits</button> — no credit card required
+              👉 <button onClick={handleLogin} className="underline hover:text-blue-700">Sign in to get 3 free credits</button> — no credit card required
             </p>
           )}
         </div>
@@ -257,7 +267,8 @@ export default function Home() {
         {!preview && (
           <div
             className="w-full max-w-2xl bg-white rounded-2xl p-12 text-center border-2 border-dashed border-gray-300 cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition"
-            onDrop={handleDrop} onDragOver={(e) => e.preventDefault()}
+            onDrop={handleDrop}
+            onDragOver={(e) => e.preventDefault()}
             onClick={() => document.getElementById('file-input')?.click()}
           >
             <div className="text-6xl mb-4">🖼️</div>
@@ -271,14 +282,14 @@ export default function Home() {
           <div className="w-full max-w-5xl">
             <div className="grid grid-cols-2 gap-6">
               <div className="bg-white rounded-2xl shadow-sm p-4 flex flex-col items-center">
-                <h3 className="text-gray-600 font-semibold text-center mb-3">📷 Original</h3>
+                <h3 className="text-gray-600 font-semibold text-center mb-3">🖼️ Original</h3>
                 <div className="bg-gray-50 rounded-xl overflow-hidden w-full aspect-square flex items-center justify-center">
                   <img src={preview} alt="Original" className="max-w-full max-h-full object-contain" />
                 </div>
                 <div className="mt-4 w-full flex justify-center">
                   <input type="file" accept="image/*" onChange={handleFileChange} className="hidden" id="file-input2" />
                   <button onClick={() => document.getElementById('file-input2')?.click()} className="px-8 py-2.5 bg-white text-gray-600 border border-gray-200 rounded-xl hover:bg-gray-50 transition font-medium shadow-sm">
-                    🔄 Upload another
+                    📤 Upload another
                   </button>
                 </div>
               </div>
@@ -290,15 +301,14 @@ export default function Home() {
                     <img src={result} alt="Result" className="max-w-full max-h-full object-contain" />
                   ) : (
                     <div className="text-center text-gray-400">
-                      {loading ? <div><div className="text-4xl mb-2">⚙️</div><p>Processing...</p></div>
-                        : <div><div className="text-4xl mb-2">👆</div><p>Click to remove background</p></div>}
+                      {loading ? <div><div className="text-4xl mb-2">⏳</div><p>Processing...</p></div> : <div><div className="text-4xl mb-2">✨</div><p>Click to remove background</p></div>}
                     </div>
                   )}
                 </div>
                 <div className="mt-4 w-full flex justify-center">
                   <button onClick={handleRemoveBackground} disabled={loading || !!result}
                     className="px-8 py-2.5 bg-green-500 text-white rounded-xl hover:bg-green-600 disabled:bg-gray-300 transition font-medium shadow-sm">
-                    {loading ? '⚙️ Processing...' : result ? '✅ Done' : '🚀 Remove Background'}
+                    {loading ? '⏳ Processing...' : result ? '✅ Done' : '✨ Remove Background'}
                   </button>
                 </div>
               </div>
@@ -307,7 +317,7 @@ export default function Home() {
             {result && (
               <div className="mt-6 flex justify-center">
                 <a href={result} download="result.png" className="px-12 py-3 bg-blue-500 text-white rounded-xl hover:bg-blue-600 transition font-medium shadow-sm text-lg">
-                  💾 Download
+                  ⬇️ Download
                 </a>
               </div>
             )}
@@ -315,16 +325,16 @@ export default function Home() {
         )}
       </div>
 
-      {/* ===== 登录引导弹窗 ===== */}
+      {/* ===== 登录弹窗 ===== */}
       {showLoginModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowLoginModal(false)}>
           <div className="bg-white rounded-2xl p-8 max-w-sm w-full mx-4 text-center" onClick={e => e.stopPropagation()}>
-            <div className="text-5xl mb-4">🎁</div>
+            <div className="text-5xl mb-4">👋</div>
             <h2 className="text-xl font-bold text-gray-800 mb-2">Get 3 Free Credits</h2>
             <p className="text-gray-500 text-sm mb-6">Sign in with Google to start removing backgrounds. No credit card required.</p>
             <button onClick={() => { setShowLoginModal(false); handleLogin(); }}
               className="w-full py-3 bg-blue-500 text-white rounded-xl hover:bg-blue-600 font-medium flex items-center justify-center gap-2">
-              <span>🔑</span> Sign in with Google · Get 3 Free Credits
+              <span>🔐</span> Sign in with Google → Get 3 Free Credits
             </button>
             <button onClick={() => setShowLoginModal(false)} className="mt-3 text-sm text-gray-400 hover:text-gray-600">Maybe later</button>
           </div>
@@ -337,7 +347,7 @@ export default function Home() {
           <div className="bg-white rounded-2xl p-6 max-w-2xl w-full mx-4" onClick={e => e.stopPropagation()}>
             {paymentSuccess ? (
               <div className="text-center py-10 px-6">
-                <div className="text-6xl mb-5">🎉</div>
+                <div className="text-6xl mb-5">✅</div>
                 <h2 className="text-3xl font-bold text-gray-900 mb-3">Payment Successful!</h2>
                 <p className="text-blue-600 text-xl font-semibold mb-1">
                   +{PLANS.find(p => p.id === selectedPlan)?.credits} credits added to your account.
@@ -357,9 +367,9 @@ export default function Home() {
                 <div className="flex justify-between items-start mb-1">
                   <div>
                     <h2 className="text-xl font-bold text-gray-800">Simple, Transparent Pricing</h2>
-                    <p className="text-gray-400 text-xs mt-0.5">Start free · No subscription required · Credits never expire</p>
+                    <p className="text-gray-400 text-xs mt-0.5">Start free → No subscription required → Credits never expire</p>
                   </div>
-                  <button onClick={() => setShowPurchaseModal(false)} className="text-gray-400 hover:text-gray-600 text-2xl mt-1">×</button>
+                  <button onClick={() => setShowPurchaseModal(false)} className="text-gray-400 hover:text-gray-600 text-2xl">×</button>
                 </div>
 
                 {/* Tab */}
@@ -382,7 +392,8 @@ export default function Home() {
                       {PLANS.map(plan => (
                         <div key={plan.id}
                           onClick={() => setSelectedPlan(plan.id)}
-                          className={`relative border-2 rounded-xl p-4 flex flex-col cursor-pointer transition ${selectedPlan === plan.id ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-blue-300'}`}>
+                          className={`relative border-2 rounded-xl p-4 flex flex-col cursor-pointer transition ${selectedPlan === plan.id ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-blue-300'}`}
+                        >
                           {plan.badge && (
                             <span className={`absolute -top-3 left-1/2 -translate-x-1/2 text-white text-xs px-3 py-0.5 rounded-full whitespace-nowrap ${plan.badge === 'Most Popular' ? 'bg-blue-500' : 'bg-gray-700'}`}>
                               {plan.badge}
@@ -413,13 +424,13 @@ export default function Home() {
                     <div className="flex justify-center gap-6 mt-3 text-xs text-gray-400">
                       <span>✓ Secure payment</span>
                       <span>✓ No hidden fees</span>
-                      <span>✓ 7-day refund guarantee</span>
+                      <span>✓ 7-day refund guaranteed</span>
                       <span>✓ Credits never expire</span>
                     </div>
                   </div>
                 )}
 
-                {/* 月订阅 */}
+                {/* 订阅 */}
                 {purchaseTab === 'subscription' && (
                   <div>
                     <div className="grid grid-cols-2 gap-3 mb-4">
@@ -454,7 +465,58 @@ export default function Home() {
         </div>
       )}
 
-      {/* ===== 个人中心侧边抽屉 ===== */}
+      {/* ===== 联系客服弹窗 ===== */}
+      {showContactModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowContactModal(false)}>
+          <div className="bg-white rounded-2xl p-6 max-w-md w-full mx-4" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold text-gray-800">💬 联系客服充值</h2>
+              <button onClick={() => setShowContactModal(false)} className="text-gray-400 hover:text-gray-600 text-2xl">×</button>
+            </div>
+            
+            <p className="text-gray-500 text-sm mb-6">
+              扫码添加微信好友或直接付款，付款后联系客服确认即可充值积分。
+            </p>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="text-center">
+                <h3 className="font-semibold text-gray-700 mb-2">微信好友</h3>
+                <img 
+                  src="/wechat-qr.jpg" 
+                  alt="微信好友二维码" 
+                  className="w-40 h-40 mx-auto rounded-lg border border-gray-200"
+                />
+                <p className="text-xs text-gray-400 mt-2">扫码添加好友咨询</p>
+              </div>
+              
+              <div className="text-center">
+                <h3 className="font-semibold text-gray-700 mb-2">支付宝付款</h3>
+                <img 
+                  src="/alipay-qr.jpg" 
+                  alt="支付宝收款码" 
+                  className="w-40 h-40 mx-auto rounded-lg border border-gray-200"
+                />
+                <p className="text-xs text-gray-400 mt-2">扫码直接付款</p>
+              </div>
+            </div>
+
+            <div className="mt-6 p-3 bg-blue-50 rounded-lg">
+              <p className="text-sm text-blue-700 text-center">
+                💡 <strong>充值流程：</strong>扫码付款 → 截图发给客服 → 确认后即可到账
+              </p>
+            </div>
+
+            <button
+              onClick={() => setShowContactModal(false)}
+              className="mt-4 w-full py-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition"
+            >
+              关闭
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ===== 个人资料抽屉 ===== */}
       {showProfileDrawer && user && (
         <div className="fixed inset-0 z-50 flex justify-end">
           <div className="flex-1 bg-black/30" onClick={() => setShowProfileDrawer(false)} />
@@ -468,7 +530,7 @@ export default function Home() {
                     <div className="text-blue-100 text-xs">{user.email}</div>
                   </div>
                 </div>
-                <button onClick={() => setShowProfileDrawer(false)} className="text-white/70 hover:text-white text-xl">×</button>
+                <button onClick={() => setShowProfileDrawer(false)} className="text-white/70 hover:text-white text-2xl">×</button>
               </div>
             </div>
 
@@ -479,7 +541,7 @@ export default function Home() {
               </div>
               <button onClick={() => { setShowProfileDrawer(false); setShowPurchaseModal(true); }}
                 className="w-full py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 text-sm font-medium">
-                💳 Buy more credits
+                🛒 Buy more credits
               </button>
             </div>
 
@@ -489,7 +551,7 @@ export default function Home() {
                 <div className="flex justify-between">
                   <span>Plan</span>
                   <span className="font-medium text-gray-800">
-                    {user.subscription_status === 'active' ? '⭐ Subscriber' : 'Free'}
+                    {user.subscription_status === 'active' ? '✔ Subscriber' : 'Free'}
                   </span>
                 </div>
                 <div className="flex justify-between">
@@ -510,4 +572,3 @@ export default function Home() {
     </div>
   );
 }
-
