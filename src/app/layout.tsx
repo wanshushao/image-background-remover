@@ -18,7 +18,7 @@ export const metadata: Metadata = {
   description: "AI-powered background removal for product photos. Fast, accurate, affordable.",
 };
 
-const PAYPAL_CLIENT_ID = "AeAGHi1vh_qfDQBtC3htdoRkBXClwfZCEkbQUCR8RJcLlAASy6ji_z_tP_HxYCQJpxdzYsq_zdQ-fgIX";
+const PAYPAL_CLIENT_ID = "ATgkbMui0F4ZsLQAwtZomxdNORTFITuu0ysvt8liWOtYWtsi5i7xloaJTMxery-HHyGQJWm9MnoVH2qV";
 
 export default function RootLayout({
   children,
