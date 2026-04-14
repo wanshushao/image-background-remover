@@ -133,6 +133,7 @@ export default function Home() {
         if (result.success) {
           setUser(prev => prev ? { ...prev, credits: result.credits } : null);
           setPaymentSuccess(true);
+          window.location.href = "/success";
           setTimeout(() => { setShowPurchaseModal(false); setPaymentSuccess(false); }, 2000);
         }
       },
